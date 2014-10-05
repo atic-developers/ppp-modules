@@ -5,9 +5,9 @@ core = 7.x
 dependencies[] = rdf
 files[] = rdfa.test
 
-; Information added by drupal.org packaging script on 2013-10-01
+; Information added by Drupal.org packaging script on 2014-10-04
 version = "7.x-1.x-dev"
 core = "7.x"
 project = "rdfa"
-datestamp = "1380624862"
+datestamp = "1412425730"
 
