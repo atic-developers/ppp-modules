@@ -1,0 +1,72 @@
+<?php
+
+/**
+ * @file
+ * Extends Drupal core RDFa markup to support RDFa 1.1.
+ */
+
+/**
+ * Implements MODULE_preprocess_HOOK().
+ */
+function rdfa_preprocess_html(&$variables) {
+  // Serialize RDF namespaces into an RDFa 1.1 prefix attribute.
+  if (function_exists('rdf_get_namespaces')) {
+    foreach (rdf_get_namespaces() as $prefix => $uri) {
+      $prefixes[] = $prefix . ': ' . $uri;
+    }
+    $variables['rdf_namespaces'] = ' prefix="' . implode(' ', $prefixes) . '"';
+  }
+}
+
+/**
+ * Implements MODULE_preprocess_HOOK().
+ */
+function rdfa_preprocess_node(&$variables) {
+  // The empty datatype is no longer necessary in RDFa 1.1 whose default
+  // behavior is now to interpret the data inside an element as plain literal
+  // unless an explicit datatype is asserted in the HTML markup.
+  unset($variables['title_attributes_array']['datatype']);
+}
+
+/**
+ * Implements MODULE_preprocess_HOOK().
+ */
+function rdfa_preprocess_comment(&$variables) {
+  // The empty datatype is no longer necessary in RDFa 1.1 whose default
+  // behavior is now to interpret the data inside an element as plain literal
+  // unless an explicit datatype is asserted in the HTML markup.
+  unset($variables['title_attributes_array']['datatype']);
+}
+
+/**
+ * Implements MODULE_preprocess_HOOK().
+ */
+function rdfa_preprocess_field(&$variables) {
+  $element = $variables['element'];
+  $mapping = rdf_mapping_load($element['#entity_type'], $element['#bundle']);
+  $field_name = $element['#field_name'];
+
+  if (!empty($mapping) && !empty($mapping[$field_name])) {
+    // Output RDFa for plain text taxonomy terms as plain literal by overriding
+    // core default attributes.
+    if ($element['#field_type'] == 'taxonomy_term_reference' && $element['#formatter'] == 'taxonomy_term_reference_plain') {
+      foreach ($element['#items'] as $delta => $item) {
+        $mapping[$field_name]['type'] = 'property';
+        $variables['item_attributes_array'][$delta] = rdf_rdfa_attributes($mapping[$field_name], $item);
+      }
+    }
+  }
+}
+
+/**
+ * Implements MODULE_preprocess_HOOK().
+ */
+function rdfa_preprocess_username(&$variables) {
+  // xml:lang alone is invalid in HTML5. Use the lang attribute instead.
+  if (empty($variables['attributes_array']['lang'])) {
+    $variables['attributes_array']['lang'] = '';
+  }
+  unset($variables['attributes_array']['xml:lang']);
+  unset($variables['attributes_array']['property']);
+  unset($variables['attributes_array']['rel']);
+}
