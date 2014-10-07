@@ -1,0 +1,63 @@
+<?php
+
+/**
+ * @file
+ * Implements some aspects that helps your site to be compliant to the Spanish LOPD Law about personal data management.
+ */
+
+/**
+ * OPERATIONS
+ */
+define('LOPD_OPERATION_LOGIN', 'login');
+define('LOPD_OPERATION_LOGOUT', 'logout');
+
+/**
+ * Implements hook_permission().
+ */
+function lopd_permission() {
+  return array(
+    'access LOPD data' => array(
+      'title' => t('Access LOPD data'), 
+      'description' => t('View report of registered events.'),
+    ),
+  );
+}
+
+/**
+ * Implements hook_user_login()
+ */
+function lopd_user_login(&$edit, $account) {
+  lopd_register_operation($account, LOPD_OPERATION_LOGIN);
+}
+
+/**
+ * Implements hook_user_logout()
+ */
+function lopd_user_logout($account) {
+  lopd_register_operation($account, LOPD_OPERATION_LOGOUT);
+}
+
+/**
+ * Registers an operation.
+ *
+ * @param type $user An user object.
+ * @param type $operation The operation being registered.
+ */
+function lopd_register_operation($user, $operation) {
+  $data = array(
+    'uid' => $user->uid,
+    'operation' => $operation,
+    'timestamp' => time(),
+  );
+  drupal_write_record('lopd', $data);
+}
+
+/**
+ * Implements hook_views_api().
+ */
+function lopd_views_api() {
+  return array(
+    'api' => 3,
+    'path' => drupal_get_path('module', 'lopd') . '/includes/views'
+  );
+}
