@@ -1,0 +1,24 @@
+<?php
+
+function ppp_form_alter(&$form, &$form_state, $form_id)
+{
+
+  if($form_id == 'avaluacio_punt_node_form')
+  {
+    dsm($form);
+    dsm($form_state);
+    $form['#validate'][] = 'my_custom_validate_function';
+    $form['#submit'][] = 'my_custom_submit_function';
+  }
+}
+function my_custom_validate_function($form, &$form_state)
+{
+  // validate here
+}
+function my_custom_submit_function($form, &$form_state)
+{
+  // submit here
+}
+
+
+?>
