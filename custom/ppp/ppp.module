@@ -1,23 +1,63 @@
 <?php
-
+// Desenvolupament generat per Projecte Ictineo S.C.C.L  ++joangi
 function ppp_form_alter(&$form, &$form_state, $form_id)
 {
-
+  if($form_id == 'punt_economia_solidaria_node_form'){
+    hide($form['field_criteris_complerts']);
+    hide($form['field_percent_aplique']);
+    $form['#submit'][] = 'punt_economia_custom_submit_function';
+  }
   if($form_id == 'avaluacio_punt_node_form')
   {
-    dsm($form);
-    dsm($form_state);
-    $form['#validate'][] = 'my_custom_validate_function';
-    $form['#submit'][] = 'my_custom_submit_function';
+  //amagen els camps acults de l'edicio
+    hide($form['field_criteris_complerts']);
+    hide($form['field_percent_aplique']);
+  // si estem creant un tipus de contingut avaluacio, creem un funcio submit propia
+    $form['#submit'][] = 'avaluacio_custom_submit_function';
   }
 }
-function my_custom_validate_function($form, &$form_state)
+
+function punt_economia_custom_submit_function($form, &$form_state)
+{  
+  $auxiliar = array();
+  // Ordenem les diferents avaluacions adjuntes en l'array auxiliar per ordenarles per data 
+  foreach ($form_state['inline_entity_form']['01007c1eda22c83088727fd66c4d5d17a760b36b']['entities'] as $key2 => $avaluacions ) {
+    $auxiliar[$avaluacions[entity]->changed] = $avaluacions[entity];
+  }
+  // Ordenem segons la key de manera descendent, essent la key la data changed de la entity COMPTE QUE NO S'ACTUALITZA GAIRE BE, per ara ho fa per la created
+  krsort($auxiliar,SORT_NUMERIC);
+  foreach ($auxiliar as  $key3 => $avaluacions2 ) {
+    $aux=1;
+    // Assignacio dels valors de la ultima avaluacio 
+    if($aux=1 && isset($avaluacions2->field_criteris_complerts['und']['0']['value'])) {
+      $form_state['values']['field_criteris_complerts']['und']['0']['value'] = $avaluacions2->field_criteris_complerts['und']['0']['value'];
+      $form_state['values']['field_percent_apliquen']['und']['0']['value'] = $avaluacions2->field_percent_apliquen['und']['0']['value'];
+    }
+    $aux++;
+  }
+} 
+function avaluacio_custom_submit_function($form, &$form_state)
 {
-  // validate here
-}
-function my_custom_submit_function($form, &$form_state)
-{
-  // submit here
+  // declaracio de variables auxiliars
+  $p = 0;
+  $avaluacions_valors = array();
+  $form_state['values']['field_criteris_complerts']['und']['0']['value'] = 0;
+  //repassem tots els camps del formulari
+  foreach ($form_state['values'] as $key => $camps ) {
+    //Nomes ens interessant els fields del tipus de contingut que tenen al nom maquina avaluacio_criteri
+    if (strpos($key,'avaluacio_criteri') !== false) {
+      if($camps['und']['0']['value'] != 0 && isset($camps['und']['0']['value'])) {
+      // Si un camp de avaluacio_criteri i te un valor diferent a 0, coloquem el seu valor en un array auxiliar
+        array_push($avaluacions_valors, $camps['und']['0']['value']);
+      }
+    }
+  }
+  //El nombre de valors de l'array equival al nombre de criteris que compleixen
+  $criteris_complerts = count($avaluacions_valors);
+  //Sumem els valors de l'array, els dividim per la nombre total de elements que hi ha, i apropem al enter mes proper amb la funcio round
+  $suma_valors = array_sum($avaluacions_valors);
+  $form_state['values']['field_criteris_complerts']['und']['0']['value'] = $criteris_complerts;
+  $form_state['values']['field_percent_apliquen']['und']['0']['value'] = round($suma_valors / $criteris_complerts);
 }
 
 
