@@ -1,22 +1,41 @@
 <?php
 // Desenvolupament generat per Projecte Ictineo S.C.C.L  ++joangi
+// Calcul dels criteris de valoracio a apartir de les indicacions del TC avaluacions i mostradesw al TC punt d'economia solidaria.
 function ppp_form_alter(&$form, &$form_state, $form_id)
 {
-  if($form_id == 'punt_economia_solidaria_node_form'){
+ // Modifiquem els formularis de creacio d'avaluacio de punt i de punt d'economia, per amargar els camps auxiliars
+ // Creem funcions de submit propies per a cadascún dels punts, per tal de realitzar aquests calculs 
+   if($form_id == 'punt_economia_solidaria_node_form'){
     hide($form['field_criteris_complerts']);
-    hide($form['field_percent_aplique']);
+    hide($form['field_percent_apliquen']);
+    hide($form['field_percent_compliment']);
     $form['#submit'][] = 'punt_economia_custom_submit_function';
   }
   if($form_id == 'avaluacio_punt_node_form')
   {
-  //amagen els camps acults de l'edicio
+  // Amagem els camps acults de l'edicio
     hide($form['field_criteris_complerts']);
-    hide($form['field_percent_aplique']);
-  // si estem creant un tipus de contingut avaluacio, creem un funcio submit propia
+    hide($form['field_percent_apliquen']);
+    hide($form['field_percent_compliment']);
+  // Si estem creant un tipus de contingut avaluacio, creem un funcio submit propi
     $form['#submit'][] = 'avaluacio_custom_submit_function';
   }
 }
-
+// Modificacio de formularis
+// En el cas de que l'usuari crei aquest putn desde l'inline entity form usarem els hooks que el modul es aporta, amb una funcio suibmit molts similiar a la avaluacio_custom_submit_function
+function ppp_inline_entity_form_entity_form_alter(&$entity_form, &$form_state) {
+  if($entity_form['#entity']->type == 'avaluacio_punt')
+  {
+    // Amagen els camps acults de l'edicio
+    hide($form['field_criteris_complerts']);
+    hide($form['field_percent_aplique']);
+    hide($form['field_percent_compliment']);
+    // Si estem creant un tipus de contingut avaluacio, creem un funcio submit propia
+     $entity_form['actions']['ief_add_save']['#submit'][] = 'avaluacioinline_custom_submit_function';
+  }
+}
+//
+//Al fer submit de qualsevo lpunt d'economia, recuperem l'array d'entities atached a traves del inline entity form i les ordenem per ordre de modficacio, la ultima modificada es la que es mostra
 function punt_economia_custom_submit_function($form, &$form_state)
 {  
   $auxiliar = array();
@@ -25,40 +44,114 @@ function punt_economia_custom_submit_function($form, &$form_state)
     $auxiliar[$avaluacions[entity]->changed] = $avaluacions[entity];
   }
   // Ordenem segons la key de manera descendent, essent la key la data changed de la entity COMPTE QUE NO S'ACTUALITZA GAIRE BE, per ara ho fa per la created
-  krsort($auxiliar,SORT_NUMERIC);
+  ksort($auxiliar,SORT_NUMERIC);
   foreach ($auxiliar as  $key3 => $avaluacions2 ) {
     $aux=1;
     // Assignacio dels valors de la ultima avaluacio 
     if($aux=1 && isset($avaluacions2->field_criteris_complerts['und']['0']['value'])) {
       $form_state['values']['field_criteris_complerts']['und']['0']['value'] = $avaluacions2->field_criteris_complerts['und']['0']['value'];
       $form_state['values']['field_percent_apliquen']['und']['0']['value'] = $avaluacions2->field_percent_apliquen['und']['0']['value'];
-    }
+      $form_state['values']['field_percent_compliment']['und']['0']['value'] = $avaluacions2->field_percent_compliment['und']['0']['value'];
+    }                     
     $aux++;
   }
 } 
+//
+// En cas de crear una avaluacio independent passarem per aquest funcio per realitzar els calculs necessaris
 function avaluacio_custom_submit_function($form, &$form_state)
 {
   // declaracio de variables auxiliars
   $p = 0;
   $avaluacions_valors = array();
+  $avaluacions_compliment = array();
   $form_state['values']['field_criteris_complerts']['und']['0']['value'] = 0;
   //repassem tots els camps del formulari
   foreach ($form_state['values'] as $key => $camps ) {
     //Nomes ens interessant els fields del tipus de contingut que tenen al nom maquina avaluacio_criteri
     if (strpos($key,'avaluacio_criteri') !== false) {
-      if($camps['und']['0']['value'] != 0 && isset($camps['und']['0']['value'])) {
-      // Si un camp de avaluacio_criteri i te un valor diferent a 0, coloquem el seu valor en un array auxiliar
+      if(isset($camps['und']['0']['value'])) {
+      // Si un camp es avaluacio_criteri i te un valor diferent a No aplica (NULL), coloquem el seu valor en un array auxiliar
         array_push($avaluacions_valors, $camps['und']['0']['value']);
+      }
+      if($camps['und']['0']['value'] != 0 && isset($camps['und']['0']['value'])) {
+      // Si un camp es avaluacio_criteri i te un valor diferent a 0 i No aplica, guarden dades per calcular el percent de compliment
+        array_push($avaluacions_compliment, $camps['und']['0']['value']);
       }
     }
   }
-  //El nombre de valors de l'array equival al nombre de criteris que compleixen
+  //Aqui tenim el nombre de criteris que si apliquen per cada punt
   $criteris_complerts = count($avaluacions_valors);
   //Sumem els valors de l'array, els dividim per la nombre total de elements que hi ha, i apropem al enter mes proper amb la funcio round
   $suma_valors = array_sum($avaluacions_valors);
   $form_state['values']['field_criteris_complerts']['und']['0']['value'] = $criteris_complerts;
   $form_state['values']['field_percent_apliquen']['und']['0']['value'] = round($suma_valors / $criteris_complerts);
+  //Ara contem el nombre de criteris que apliquen amb valor mes gran que 0, i dividim per el nombre total de criteris aplicats a fi de treure un percentatge
+  $form_state['values']['field_percent_compliment']['und']['0']['value'] = round(count($avaluacions_compliment)/$criteris_complerts,2)*100;
 }
-
-
+//
+//Funcio submit per cuan es crea un node a traves del widgent de inline form
+function avaluacioinline_custom_submit_function($form, &$form_state)
+{
+  // declaracio de variables auxiliars
+  $p = 0;
+  $avaluacions_valors = array();
+  $avaluacions_compliment = array();
+  //repassem tots els camps del formulari
+  foreach ($form_state['inline_entity_form']['01007c1eda22c83088727fd66c4d5d17a760b36b']['entities']['0']['entity'] as $key => $camps ) {
+    //Nomes ens interessant els fields del tipus de contingut que tenen al nom maquina avaluacio_criteri
+    if (strpos($key,'avaluacio_criteri') !== false) {
+      if(isset($camps['und']['0']['value'])) {
+      // Si un camp es avaluacio_criteri i te un valor diferent a No aplica (NULL), coloquem el seu valor en un array auxiliar
+        array_push($avaluacions_valors, $camps['und']['0']['value']);
+      }
+      if($camps['und']['0']['value'] != 0 && isset($camps['und']['0']['value'])) {
+      // Si un camp es avaluacio_criteri i te un valor diferent a 0 i No aplica, guarden dades per calcular el percent de compliment
+        array_push($avaluacions_compliment, $camps['und']['0']['value']);
+      }
+    }
+  }
+  //Aqui tenim el nombre de criteris que si apliquen per cada punt
+  $criteris_complerts = count($avaluacions_valors);
+  //Sumem els valors de l'array, els dividim per la nombre total de elements que hi ha, i apropem al enter mes proper amb la funcio round
+  $suma_valors = array_sum($avaluacions_valors);
+  $form_state['values']['field_avaluacio_punt']['und']['form']['field_criteris_complerts']['0']['value'] = $criteris_complerts;
+  $form_state['values']['field_avaluacio_punt']['und']['form']['field_percent_apliquen']['und']['0']['value'] = round($suma_valors / $criteris_complerts);
+  //Ara contem el nombre de criteris que apliquen amb valor mes gran que 0, i dividim per el nombre total de criteris aplicats a fi de treure un percentatge
+  $form_state['values']['field_avaluacio_punt']['und']['form']['field_percent_compliment']['und']['0']['value'] = round(count($avaluacions_compliment)/$criteris_complerts,2)*100;
+}
+//
+//En casos d'actualització desde inline entity, necessitem ejecutar el node submit per poguer operar
+function ppp_node_submit($node, $form, &$form_state) {
+  // Decompose the selected menu parent option into 'menu_name' and 'plid', if
+  // the form used the default parent selection widget.
+  if( $node->type == 'avaluacio_punt') {
+    // declaracio de variables auxiliars
+    $p = 0;
+    $avaluacions_valors = array();
+    $avaluacions_compliment = array();
+    $form_state['values']['field_criteris_complerts']['und']['0']['value'] = 0;
+    //repassem tots els camps del formulari
+    foreach ($form_state['values'] as $key => $camps ) {
+      //Nomes ens interessant els fields del tipus de contingut que tenen al nom maquina avaluacio_criteri
+      if (strpos($key,'avaluacio_criteri') !== false) {
+        if(isset($camps['und']['0']['value'])) {
+        // Si un camp es avaluacio_criteri i te un valor diferent a No aplica (NULL), coloquem el seu valor en un array auxiliar
+          array_push($avaluacions_valors, $camps['und']['0']['value']);
+        }
+        if($camps['und']['0']['value'] != 0 && isset($camps['und']['0']['value'])) {
+        // Si un camp es avaluacio_criteri i te un valor diferent a 0 i No aplica, guarden dades per calcular el percent de compliment
+          array_push($avaluacions_compliment, $camps['und']['0']['value']);
+        }
+      }
+    }
+    //Aqui tenim el nombre de criteris que si apliquen per cada punt
+    $criteris_complerts = count($avaluacions_valors);
+    //Sumem els valors de l'array, els dividim per la nombre total de elements que hi ha, i apropem al enter mes proper amb la funcio round
+    $suma_valors = array_sum($avaluacions_valors);
+    $node->field_criteris_complerts['und']['0']['value'] = $criteris_complerts;
+    $node->field_percent_apliquen['und']['0']['value'] = round($suma_valors / $criteris_complerts);
+    //Ara contem el nombre de criteris que apliquen amb valor mes gran que 0, i dividim per el nombre total de criteris aplicats a fi de treure un percentatge
+    $node->field_percent_compliment['und']['0']['value'] = round(count($avaluacions_compliment)/$criteris_complerts,2)*100;
+  }  
+}
 ?>

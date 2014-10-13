@@ -17,7 +17,19 @@ function ppp_mapes_leaflet_map_info() {
     array(
       'label' => 'Pam a Pam',
       'description' => t('Mapa base per Pam a Pam'),
+      'markercluster_icon' => array(
+        // 'iconUrl'       => '/sites/default/files/icon.png',
+        'iconUrl'       => 'https://lh6.googleusercontent.com/-60CxXZh7hjc/AAAAAAAAAAI/AAAAAAAAABA/L4jpzGjKkQo/photo.jpg',
+        'iconSize'      => array('x' => '20', 'y' => '40'),
+        'iconAnchor'    => array('x' => '20', 'y' => '40'),
+        'popupAnchor'   => array('x' => '-8', 'y' => '-32'),
+      ),
+      'center' => array(
+        'lat' => 41.7,
+        'lon' => 2,
+      ),
       'settings' => array(
+        'zoom' => 16,
         'minZoom' => 0,
         'maxZoom' => 18,
         'dragging' => TRUE,
@@ -31,11 +43,11 @@ function ppp_mapes_leaflet_map_info() {
         'zoomAnimation' => TRUE,
         'closePopupOnClick' => TRUE,
         // Params de markercluster.
-        'animateAddingMarkers' => FALSE,
-        'disableClusteringAtZoom' => NULL,
+        'animateAddingMarkers' => TRUE,
+        'disableClusteringAtZoom' => 2,
         'maxClusterRadius' => 80,
         'showCoverageOnHover' => TRUE,
-        'singleMarkerMode' => FALSE,
+        'singleMarkerMode' => TRUE,
         'skipDuplicateAddTesting' => FALSE,
         'spiderfyOnMaxZoom' => TRUE,
         'zoomToBoundsOnClick' => TRUE,
@@ -120,19 +132,35 @@ function ppp_mapes_block_view($delta = '') {
       else {
         drupal_set_message(t('Invalid source for GeoJSON data: @source', array('@source' => variable_get('ppp_mapes_geojson', ''))), 'error');
       }
+      // TODO style points in array.
 
-      $features = array(
-        array(
-          'type' => 'json',
-          'json' => $points,
-          'properties' => array(
-            'leaflet_id' => 'ppp_geojson_main',
-          ),
-        ),
+      $map['center'] = array(
+        'lat' => 41.7,
+        'lon' => 2,
       );
-      $output = leaflet_render_map($map, $features, ' 400px');
+      $map['settings'] = array(
+        'zoom' => 8,
+      );
+      $output = leaflet_render_map($map, array(), ' 400px');
+
+      // Exposed filters bottom.
+      $territori = taxonomy_get_tree('3');
+      $filter1 = '<div id="filter-1" class="filter col col1">';
+      $filter1 .= '<select id="widget-filter-1" multiple="">';
+      foreach ($territori as $tid => $term) {
+        $filter1 .= '<option class="' . $tid . '" value="' . $term->name . '">' . $term->name . '</option>';
+      }
+      $filter1 .= '</select>';
+      $filter1 .= '</div>';
+
+      $output .= $filter1;
 
       $block['content'] = $output;
+      // Buggi.
+
+      drupal_add_library('chosen', 'drupal.chosen'); 
+      drupal_add_js(array('ppp_mapes' => array('punts' => $points)), 'setting');
+      drupal_add_js(drupal_get_path('module', 'ppp_mapes') . '/js/mapes.js');
       break;
   }
 

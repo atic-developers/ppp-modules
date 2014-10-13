@@ -223,6 +223,14 @@ function shs_field_widget_settings_form($field, $instance) {
     '#default_value' => empty($settings['shs']['force_deepest']) ? FALSE : $settings['shs']['force_deepest'],
   );
 
+  // quiron patch commented
+  //$form['shs']['save_lineage'] = array(
+    //'#type' => 'checkbox',
+    //'#title' => t('Save lineage'),
+    //'#description' => t('If checked all parents as well as the selected term are saved against the node/entity.'),
+    //'#default_value' => empty($settings['shs']['save_lineage']) ? FALSE : $settings['shs']['save_lineage'],
+  //);
+
   // "Chosen" integration.
   if (module_exists('chosen')) {
     $form['shs']['use_chosen'] = array(
@@ -732,6 +740,35 @@ function shs_form_taxonomy_form_term_submit(&$form, &$form_state) {
     }
   }
 }
+
+/**
+ * Implements hook_field_attach_submit().
+ *  comentat codi del patch
+ */
+//function shs_field_attach_submit($entity_type, $entity, &$form, &$form_state) {
+
+  //$instances = _shs_get_instances('node');
+  //foreach ($instances as $node_type => $fields) {
+    //foreach ($fields as $field_name => $field) {
+      //if (!$field['widget']['settings']['shs']['save_lineage']) {
+        //continue;
+      //}
+      //if ($node_type == $entity->type) {
+        //if (!empty($form_state['values'][$field_name])) {
+          //if ($tid = $form_state['values'][$field_name][LANGUAGE_NONE][0]['tid']) {
+            //unset($form_state['values'][$field_name][LANGUAGE_NONE]);
+            //$x = &$entity->$field_name;
+            //foreach (taxonomy_get_parents_all($tid) as $p_tid => $term) {
+              //if(!empty($term->tid) && $tid != $term->tid) {
+                //$x[LANGUAGE_NONE][] = array('tid' => $term->tid);
+              //}
+            //}
+          //}
+        //}
+      //}
+    //}
+  //}
+//}
 
 /**
  * Helper function to get all instances of widgets with type "taxonomy_shs".
