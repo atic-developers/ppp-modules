@@ -1,0 +1,52 @@
+diff --git a/shs.module b/shs.module
+index 6f4bf2e..0a50101 100644
+--- a/shs.module
++++ b/shs.module
+@@ -325,6 +325,13 @@ function shs_field_widget_settings_form($field, $instance) {
+     '#default_value' => empty($settings['shs']['force_deepest']) ? FALSE : $settings['shs']['force_deepest'],
+   );
+ 
++  $form['shs']['save_lineage'] = array(
++    '#type' => 'checkbox',
++    '#title' => t('Save lineage'),
++    '#description' => t('If checked all parents as well as the selected term are saved against the node/entity.'),
++    '#default_value' => empty($settings['shs']['save_lineage']) ? FALSE : $settings['shs']['save_lineage'],
++  );
++
+   // "Chosen" integration.
+   if (module_exists('chosen')) {
+     $form['shs']['use_chosen'] = array(
+@@ -1001,6 +1008,33 @@ function shs_form_taxonomy_form_term_submit(&$form, &$form_state) {
+ }
+ 
+ /**
++ * Implements hook_field_attach_submit().
++ *
++ */
++function shs_field_attach_submit($entity_type, $entity, &$form, &$form_state) {
++
++  $instances = _shs_get_instances('node');
++  foreach ($instances as $node_type => $fields) {
++    foreach ($fields as $field_name => $field) {
++      if (!$field['widget']['settings']['shs']['save_lineage']) {
++        continue;
++      }
++      if ($node_type == $entity->type) {
++        if (!empty($form_state['values'][$field_name])) {
++          if ($tid = $form_state['values'][$field_name][LANGUAGE_NONE][0]['tid']) {
++            foreach (taxonomy_get_parents($tid) as $p_tid => $term) {
++              $x = &$entity->$field_name;
++              $x[LANGUAGE_NONE][] = array('tid' => $p_tid);
++            }
++          }
++        }
++      }
++    }
++  }
++}
++
++
++/**
+  * Helper function to get all instances of widgets with type "taxonomy_shs".
+  *
+  * @param <string> $entity_type
