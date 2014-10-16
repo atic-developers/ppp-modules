@@ -57,7 +57,7 @@ function ppp_mapes_leaflet_map_info() {
         'earth' => array(
           'urlTemplate' => 'http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
           'options' => array(
-            'attribution' => 'OSM Mapnik',
+            'attribution' => "Mapa d'alternatives de consum Pam a Pam, desenvolupat per <a href='http://projecteictineo.com'>Projecte Ictineo SCCL</a>",
           ),
         ),
       ),
@@ -84,11 +84,58 @@ function ppp_mapes_block_configure($delta = '') {
   $form = array();
   switch ($delta) {
     case 'ppp_mapes_mapahome':
-      $form['ppp_mapes_taxo1'] = array(
-        '#type' => 'textfield',
-        '#title' => 'taxo 1',
-        '#default_value' => variable_get('ppp_mapes_taxo1', ''),
+      $form['ppp_mapes_grup_cap'] = array(
+        '#type' => 'fieldset',
+        '#title' => 'Elements de la capçalera',
+        '#collapsible' => TRUE,
+        '#collapsed' => TRUE,
       );
+      for ($i = 1; $i <= 8; $i++) {
+        $form['ppp_mapes_grup_cap']['ppp_mapes_img' . $i] = array(
+          '#type' => 'managed_file',
+          '#title' => 'Imatge ' . $i . ' per la capçalera',
+          '#description' => 'El tamany i proporcions de les imateges han de ser els correctes',
+          '#default_value' => variable_get('ppp_mapes_img' . $i, ''),
+          '#upload_validators' => array(
+            'file_validate_extensions' => array('gif png jpg jpeg svg'),
+          ),
+          '#upload_location' => 'public://slide/',
+        );
+      }
+      $form['ppp_mapes_grup_cap']['ppp_mapes_tit_gran'] = array(
+        '#type' => 'textfield',
+        '#title' => 'Titol principal del buscador',
+        '#default_value' => variable_get('ppp_mapes_tit_gran', ''),
+      );
+      $form['ppp_mapes_grup_cap']['ppp_mapes_tit_petit'] = array(
+        '#type' => 'textfield',
+        '#title' => 'Titol secondari del buscador',
+        '#default_value' => variable_get('ppp_mapes_tit_petit', ''),
+      );
+      $form['ppp_mapes_grup_cap']['ppp_mapes_placeholder'] = array(
+        '#type' => 'textfield',
+        '#title' => 'Text de la caixa del buscador',
+        '#default_value' => variable_get('ppp_mapes_placeholder', ''),
+      );
+      $form['ppp_mapes_grup_cap']['ppp_mapes_sub'] = array(
+        '#type' => 'textfield',
+        '#title' => 'Text a sota la caixa del buscador (exemples)',
+        '#default_value' => variable_get('ppp_mapes_sub', ''),
+      );
+
+      $form['ppp_mapes_grup_crit'] = array(
+        '#type' => 'fieldset',
+        '#title' => 'Paraules claus dels criteris',
+        '#collapsible' => TRUE,
+        '#collapsed' => TRUE,
+      );
+      for ($i = 1; $i <= 15; $i++) {
+        $form['ppp_mapes_grup_crit']['ppp_mapes_keys_field_avaluacio_criteri' . $i] = array(
+          '#type' => 'textfield',
+          '#title' => 'Paraules clau associades al criteri ' . $i,
+          '#default_value' => variable_get('ppp_mapes_keys_field_avaluacio_criteri' . $i, ''),
+        );
+      }
       $form['ppp_mapes_geojson'] = array(
         '#type' => 'textfield',
         '#title' => 'GeoJSON source for map points',
@@ -106,7 +153,22 @@ function ppp_mapes_block_configure($delta = '') {
 function ppp_mapes_block_save($delta = '', $edit = array()) {
   switch ($delta) {
     case 'ppp_mapes_mapahome':
-      variable_set('ppp_mapes_taxo1', $edit['ppp_mapes_taxo1']);
+      for ($i = 1; $i <= 8; $i++) {
+        variable_set('ppp_mapes_img' . $i, $edit['ppp_mapes_img' . $i]);
+        $file = file_load($edit['ppp_mapes_img' . $i]);
+        if (!empty($file)) {
+          $file->status = FILE_STATUS_PERMANENT;
+          file_save($file);
+          file_usage_add($file, 'ppp_mapes', 'slide', $i);
+        }
+      }
+      variable_set('ppp_mapes_tit_petit', $edit['ppp_mapes_tit_petit']);
+      variable_set('ppp_mapes_tit_gran', $edit['ppp_mapes_tit_gran']);
+      for ($i = 1; $i <= 15; $i++) {
+        variable_set('ppp_mapes_keys_field_avaluacio_criteri' . $i, $edit['ppp_mapes_keys_field_avaluacio_criteri' . $i]);
+      }
+      variable_set('ppp_mapes_placeholder', $edit['ppp_mapes_placeholder']);
+      variable_set('ppp_mapes_sub', $edit['ppp_mapes_sub']);
       variable_set('ppp_mapes_geojson', $edit['ppp_mapes_geojson']);
       break;
   }
@@ -122,6 +184,46 @@ function ppp_mapes_block_view($delta = '') {
       global $base_url;
       $block['subject'] = '';
       $output = '';
+
+      // Inclure el titol i subtitol.
+      $output .= '<div id="header-slider-wrapper">';
+      $output .= '<div id="header-cont-wrapper">';
+      $output .= '<h2 id="search-title" class="search-cap">' . variable_get('ppp_mapes_tit_gran', '') . '</h2>';
+      $output .= '<h3 id="search-subtitle" class="search-cap">' . variable_get('ppp_mapes_tit_petit', '') . '</h3>';
+
+      // Inclure la capçalera de dalt.
+      $exposed = module_invoke('views', 'block_view', '-exp-punts_del_mapa-page_1');
+      $output .= render($exposed['content']);
+      // Final del wrapper.
+      $output .= '</div>';
+
+      // Inclure slider d'imatges.
+      $tmp_slide = '';
+      for ($i = 1; $i <= 8; $i++) {
+        $img = variable_get('ppp_mapes_img' . $i, '');
+        if ($img != '') {
+          $img_url = file_create_url(file_load($img)->uri);
+          $tmp_slide .= '<img src="' . $img_url . '" />';
+        }
+      }
+      if ($tmp_slide != '') {
+        $output .= '<div class="cycle-slideshow" data-cycle-fx="scrollHorz"  data-cycle-timeout="6000"  data-cycle-prev="#slide-prev" data-cycle-next="#slide-next">';
+        $output .= $tmp_slide;
+        $output .= '</div>';
+        $output .= '<div id="slide-prev"></div>';
+        $output .= '<div id="slide-next"></div>';
+      }
+      $output .= '</div>';
+
+      $output .= '<div id="map-wrapper">';
+      // Pestanyes de centrat del mapa.
+      $output .= '<div id="tabs-wrapper">';
+      $output .= '<span class="centred-tab" id="centred-tab-cat">' . t('Map of whole Catalonia') . '</span>';
+      $output .= '<span class="centred-tab" id="centred-tab-bcn">' . t('Map of Barcelona') . '</span>';
+      $output .= '<span class="centred-tab" id="centred-tab-usr">' . t('Your position') . '</span>';
+      $output .= '</div>';
+
+      // Incloure el Mapa.
       $map = leaflet_map_get_info('Pam a Pam');
       $result = drupal_http_request($base_url . variable_get('ppp_mapes_geojson', ''));
       $points = '';
@@ -141,28 +243,80 @@ function ppp_mapes_block_view($delta = '') {
       $map['settings'] = array(
         'zoom' => 8,
       );
-      $output = leaflet_render_map($map, array(), ' 400px');
+      $output .= leaflet_render_map($map, array(), ' 400px');
 
       // Exposed filters bottom.
       $territori = taxonomy_get_tree('3');
       $filter1 = '<div id="filter-1" class="filter col col1">';
       $filter1 .= '<select id="widget-filter-1" multiple="">';
       foreach ($territori as $tid => $term) {
-        $filter1 .= '<option class="' . $tid . '" value="' . $term->name . '">' . $term->name . '</option>';
+        $filter1 .= '<option class="' . $tid . '" value="' . $term->tid . '">' . $term->name . '</option>';
       }
       $filter1 .= '</select>';
       $filter1 .= '</div>';
-
       $output .= $filter1;
 
-      $block['content'] = $output;
-      // Buggi.
+      $sectors = taxonomy_get_tree('2', 0, 1);
+      $filter2 = '<div id="filter-2" class="filter col col2">';
+      foreach ($sectors as $id => $term) {
+        $filter2 .= "<div class='sector sector-" . $term->tid . " " . $id . "' data-value='" . $term->tid . "'>";
+        $filter2 .= $term->name;
+        $filter2 .= "</div>";
+      }
+      $filter2 .= '<div id="filter-2-label-box"></div>';
+      $filter2 .= '</div>';
+      $output .= $filter2;
 
+      $filter3 = '<div id="filter-3" class="filter col col3">';
+      for ($i = 1; $i <= 15; $i++) {
+        $filter3 .= "<div class='criteris criteri-" . $i . " " . $i . "' data-value='field_avaluacio_criteri" . $i . "'>";
+        $filter3 .= $i;
+        $filter3 .= "</div>";
+      }
+      $filter3 .= '<div id="filter-3-label-box"></div>';
+      $filter3 .= '</div>';
+      $output .= $filter3;
+
+      $output .= '</div>';
+
+      $block['content'] = $output;
+
+      $placeholder = variable_get('ppp_mapes_placeholder', '');
+      $subtitle = variable_get('ppp_mapes_sub', '');
       drupal_add_library('chosen', 'drupal.chosen');
+      drupal_add_js(array('ppp_mapes_theme' => array('placeholder' => $placeholder, 'subtitle' => $subtitle)), 'setting');
       drupal_add_js(array('ppp_mapes' => array('punts' => $points)), 'setting');
+      drupal_add_js(drupal_get_path('module', 'ppp_mapes') . '/js/jquery.cycle2.min.js');
       drupal_add_js(drupal_get_path('module', 'ppp_mapes') . '/js/mapes.js');
       break;
   }
 
   return $block;
+}
+
+/**
+ * Implements hook_views_geojson_render_fields_alter().
+ */
+function ppp_mapes_views_geojson_render_fields_alter(&$feature, $view, $row, $index) {
+  // Rewrite sectors.
+  $output = '-';
+  foreach ($row->_entity_properties['field_sector_subsectors'] as $val) {
+    $tid = $val;
+    foreach (taxonomy_get_parents_all($tid) as $count => $term) {
+      if (!empty($term)) {
+        $output .= $term->tid . '-';
+      }
+    }
+  }
+  $feature['properties']['field_sector_subsectors'] = $output;
+
+  // Rewrite territoris.
+  $tid = $row->_entity_properties['field_territori'];
+  $output = '-';
+  foreach (taxonomy_get_parents_all($tid) as $count => $term) {
+    if (!empty($term)) {
+      $output .= $term->tid . '-';
+    }
+  }
+  $feature['properties']['field_territori'] = $output;
 }

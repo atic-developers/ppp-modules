@@ -135,6 +135,13 @@ function _views_geojson_render_fields($view, $row, $index) {
       $feature['properties'][$id] = is_numeric($value_rendered) ? floatval($value_rendered) : $value_rendered;
     }
   }
+  // quiron test patch
+  // https://www.drupal.org/files/views_geojson_render_fields_alter.patch
+  // Let modules modify the data.
+  foreach (module_implements('views_geojson_render_fields_alter') as $module) {
+    $function = $module . '_views_geojson_render_fields_alter';
+    $function($feature, $view, $row, $index);
+  }
 
   return $feature;
 }
