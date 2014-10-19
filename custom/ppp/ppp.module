@@ -23,6 +23,11 @@ function ppp_form_alter(&$form, &$form_state, $form_id) {
     hide($form['field_percent_compliment']);
     hide($form['field_llista_criteris_complerts']);
     hide($form['field_llista_criteris_claus']);
+    $form['field_avaluacio_punt'][LANGUAGE_NONE]['actions']['ief_add']['#value'] = t('Add new avaluation');
+    $form['field_avaluacio_punt'][LANGUAGE_NONE]['form']['title']['#default_value'] = time();
+    $form['field_avaluacio_punt'][LANGUAGE_NONE]['form']['title']['#type'] = 'hidden';
+    $form['field_avaluacio_punt'][LANGUAGE_NONE]['form']['#title'] = '';
+
     $form['#submit'][] = 'punt_economia_custom_submit_function';
    }
   if($form_id == 'avaluacio_punt_node_form')

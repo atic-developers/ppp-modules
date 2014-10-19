@@ -3,23 +3,9 @@ jQuery(document).ready(function () {
   var punts = Drupal.settings.ppp_mapes.punts.features;
   console.log(punts);
   var geoJsonLayer = L.geoJson(punts, {
-      //onEachFeature: function (feature, layer) {
-        //layer.bindPopup(feature.properties.address);
-      //},
-      pointToLayer: function (feature, latlng) {
-        // Todo que vingui una settings amb correspindencia valor - icona
-        switch (feature.properties.field_sector_subsectors) {
-          case 'Alimentació': 
-            var customicon = L.icon({
-              iconUrl: 'https://pbs.twimg.com/profile_images/3542667806/b8fbeb7dbfa909e2a638fb4c0fc3392c_400x400.png',
-              iconSize: [38, 95],
-              iconAnchor: [22, 94],
-              popupAnchor: [-3, -76]
-            });
-            return L.marker(latlng, {icon: customicon});
-        }
-        return L.marker(latlng);
-      }
+    pointToLayer: function (feature, latlng) {
+      return custom_ptl(feature, latlng);
+    }
   });
   var markers = L.markerClusterGroup();
   markers.addLayer(geoJsonLayer);
@@ -28,9 +14,9 @@ jQuery(document).ready(function () {
   map.fitBounds(markers.getBounds());
 
   // Correccions menors d'estil i usabilitat.
-  jQuery('input#edit-s1').attr('placeholder', jQuery('label[for=edit-s1]').text().replace(/  /g, ''));
+  jQuery('input#edit-s1').attr('placeholder', Drupal.settings.ppp_mapes_theme.placeholder);
   jQuery('label[for=edit-s1]').hide();
-
+  jQuery('#edit-s1-wrapper .views-widget .form-item-s1').append('<div id="search-subtitle">' + Drupal.settings.ppp_mapes_theme.subtitle + '</div>');
 });
 
 (function ($, Drupal, window, document, undefined) {
@@ -79,9 +65,7 @@ Drupal.behaviors.ppp_mapes = {
       });
       var posting = $.get( url, params );
       posting.done(function( data ) {
-        console.log(data);
       Drupal.settings.ppp_mapes.punts = data;
-      console.log(Drupal.settings.ppp_mapes.punts.features);
         reload_map();
       });
     });
@@ -178,18 +162,7 @@ function reload_map() {
         return true;
       },
       pointToLayer: function (feature, latlng) {
-        // Todo que vingui una settings amb correspindencia valor - icona
-        switch (feature.properties.field_sector_subsectors) {
-          case 'Alimentació': 
-            var customicon = L.icon({
-              iconUrl: 'https://pbs.twimg.com/profile_images/3542667806/b8fbeb7dbfa909e2a638fb4c0fc3392c_400x400.png',
-              iconSize: [38, 95],
-              iconAnchor: [22, 94],
-              popupAnchor: [-3, -76]
-            });
-            return L.marker(latlng, {icon: customicon});
-        }
-        return L.marker(latlng);
+        return custom_ptl(feature, latlng);
       }
   });
   var markers = L.markerClusterGroup();
@@ -197,4 +170,65 @@ function reload_map() {
   map.addLayer(markers);
   Drupal.settings.ppp_mapes.cluster_layer = markers;
   map.fitBounds(markers.getBounds());
+}
+
+function show_point(e) {
+  jQuery('#preview #preview-content-wrapper').html(e.target.feature.properties.nothing).fadeIn(400);
+}
+
+function custom_ptl(feature, latlng) {
+  var icon_url = Drupal.settings.basePath + '/sites/all/themes/pamapam/images/map/';
+  var icon = {
+    iconUrl: icon_url + 'fin.png',
+    iconSize: [34, 47],
+    iconAnchor: [34, 47]
+  };
+  if(feature.properties.field_sector_subsectors != null) {
+    var sectors = feature.properties.field_sector_subsectors.split('-');
+    for (var i=0, len = sectors.length; i < len ; i++) {
+      if(sectors[i] != '') {
+        var s = sectors[i];
+        switch(s) {
+          case '12': //Alimentacio
+            icon.iconUrl = icon_url + 'ali.png';
+            break;
+          case '21': //assesorament
+            icon.iconUrl = icon_url + 'ase.png';
+            break;
+          case '15': //comunicacio
+            icon.iconUrl = icon_url + 'tec.png';
+            break;
+          case '13': //cultura
+            icon.iconUrl = icon_url + 'cul.png';
+            break;
+          case '16': //cures
+            icon.iconUrl = icon_url + 'cur.png';
+            break;
+          case '14': //educacio
+            icon.iconUrl = icon_url + 'edu.png';
+            break;
+          case '23': //xarxes
+            icon.iconUrl = icon_url + 'xar.png';
+            break;
+          case '20': //financament
+            icon.iconUrl = icon_url + 'fin.png';
+            break;
+          case '10': //habitatge
+            icon.iconUrl = icon_url + 'hab.png';
+            break;
+          case '22': //logistica
+            icon.iconUrl = icon_url + 'log.png';
+            break;
+          case '18': //oci
+            icon.iconUrl = icon_url + 'oci.png';
+            break;
+          case '11': //vestir
+            icon.iconUrl = icon_url + 'ves.png';
+            break;
+        }
+      }
+    }
+    return  L.marker(latlng, {icon: L.icon(icon)}).bindLabel(feature.properties.title, {offset: [-100,-90]}).on('click', show_point);
+  }
+  return L.marker(latlng).bindLabel(feature.properties.title, {offset: [-50,-100]}).on('click', show_point);
 }
