@@ -625,7 +625,7 @@ function fivestar_field_formatter_view($entity_type, $entity, $field, $instance,
     $element[0][$name]['#description'] = theme('fivestar_summary', $summary_options);
   }
 
-  //return $element;
+  return $element;
 }
 
 /**

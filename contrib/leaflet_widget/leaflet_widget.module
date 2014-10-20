@@ -319,6 +319,9 @@ function leaflet_widget_geojson_feature($wkt, $properties = array()) {
   $geophp = geophp_load();
   if (!$geophp) return FALSE;
 
+  // quiron added
+  if($wkt == 'GEOMETRYCOLLECTION EMPTY') return FALSE;
+
   $geometry = geoPHP::load($wkt, 'wkt');
   return array(
     'type' => 'Feature',
